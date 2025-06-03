@@ -1,117 +1,143 @@
-# Proof of Concept for Matrix Webhook Bot
-# This script connects to a Matrix bot and provides a webhook interface to send and receive messages.
-# It requires a shared secret for authentication and uses aiohttp for the web server.
+# Proof of Concept for Matrix Websocket Bridge Bot
 
-# Import necessary libraries
+# Imports
 import os
 import asyncio
-from aiohttp import web
-from nio import AsyncClient, RoomMessageText, InviteMemberEvent
-from dotenv import load_dotenv
+import json
+from aiohttp import web, WSMsgType  # aiohttp provides HTTP and WebSocket handling
+from nio import AsyncClient, RoomMessageText, InviteMemberEvent  # Matrix client events
+from dotenv import load_dotenv  
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
-# Define the Matrix Webhook Bot class
-class MatrixWebhookBot:
+# Define the main bot class
+class MatrixBridgeBot:
     def __init__(self):
-
-        # Initialize the Matrix client with environment variables
+        # Create a Matrix client using environment variables
         self.client = AsyncClient(
             os.getenv("MATRIX_HOMESERVER"),
             os.getenv("MATRIX_USER_ID")
         )
         self.client.access_token = os.getenv("MATRIX_ACCESS_TOKEN")
         self.room_id = os.getenv("ROOM_ID")
-        self.message_queue = asyncio.Queue()
-        self.webhook_secret = os.getenv("WEBHOOK_SECRET")  
-        self.web_app = self.setup_web_app()
+        self.secret = os.getenv("WEBHOOK_SECRET")
 
-    # Authentication middleware for aiohttp
+        # WebSocket client connection
+        self.ws_client = None
+
+        # Set up the aiohttp web server
+        self.app = self.setup_app()
+
+    # Middleware to enforce token-based authentication
     @web.middleware
-    async def auth_middleware(self, request, handler):
-        """Require Authorization header for ALL endpoints"""
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or auth_header != f"Bearer {self.webhook_secret}":
-            # If the Authorization header is missing or incorrect, return 401 Unauthorized
-            return web.json_response(
-                {"error": "Unauthorized"},
-                status=401
-            )
+    async def auth(self, request, handler):
+        token = request.headers.get("Authorization")
+        if not token or token != f"Bearer {self.secret}":
+            return web.Response(text="Unauthorized", status=401)
         return await handler(request)
 
-    async def start(self):
-
-        # Register Matrix event callbacks
-        self.client.add_event_callback(self.message_callback, RoomMessageText)
-        self.client.add_event_callback(self.invite_callback, InviteMemberEvent)
-        
-        # Start HTTP server
-        runner = web.AppRunner(self.web_app)
-        await runner.setup()
-        site = web.TCPSite(runner, '0.0.0.0', 8080)
-        await site.start()
-        print("HTTP server running at http://localhost:8080")
-
-        # Start Matrix sync in background
-        asyncio.create_task(self.client.sync_forever(timeout=30000))
-
-    # Setup the aiohttp web application with routes and middleware
-    def setup_web_app(self):
-        """Apply auth middleware to ALL routes"""
-        app = web.Application(middlewares=[self.auth_middleware])
-        app.add_routes([
-            web.post('/send', self.handle_send),
-            web.get('/receive', self.handle_receive),
-            web.post('/receive', self.handle_receive)
-        ])
+    # Configure the web server application
+    def setup_app(self):
+        app = web.Application(middlewares=[self.auth])
+        app.add_routes([web.get("/ws", self.ws_handler)])  # Define WebSocket route
         return app
 
-    # --- Matrix Event Handlers ---
-    async def message_callback(self, room, event):
-        if event.sender != self.client.user_id:
-            await self.message_queue.put({
+    # Start the bot and WebSocket server
+    async def start(self):
+        # Register Matrix message and invite event handlers
+        self.client.add_event_callback(self.on_message, RoomMessageText)
+        self.client.add_event_callback(self.on_invite, InviteMemberEvent)
+
+        # Start the aiohttp web server on port 8080
+        runner = web.AppRunner(self.app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", 8080)
+        await site.start()
+        print("WebSocket bridge server listening on ws://localhost:8080/ws")
+
+        # Start Matrix sync loop in the background
+        asyncio.create_task(self.client.sync_forever(timeout=30000))
+
+    # Handle incoming messages from Matrix
+    async def on_message(self, room, event):
+        # Ignore messages sent by the bot itself and only process if a client is connected
+        if event.sender != self.client.user_id and self.ws_client:
+            message = {
+                "type": "matrix_message",
                 "room_id": room.room_id,
                 "sender": event.sender,
                 "message": event.body,
                 "timestamp": event.server_timestamp
-            })
+            }
+            try:
+                # Forward the message to the connected WebSocket client
+                await self.ws_client.send_json(message)
+            except Exception as e:
+                print("Failed to forward to chatbot:", e)
 
-    async def invite_callback(self, room, event):
+    # Handle room invite events
+    async def on_invite(self, room, event):
+        # Auto-join any room the bot is invited to
         if event.state_key == self.client.user_id:
             await self.client.join(room.room_id)
-            print(f"Joined new room: {room.room_id}")
+            print(f"Joined invited room: {room.room_id}")
 
-    # --- HTTP Endpoints ---
-    # Handle sending messages to a room
-    async def handle_send(self, request):
+    # Handle WebSocket connections from the chatbot
+    async def ws_handler(self, request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)  # Upgrade HTTP request to WebSocket
+
+        self.ws_client = ws  # Store the connected WebSocket client
+        print("Chatbot connected via WebSocket.")
+
+        # Notify client that the connection was successful
+        await ws.send_json({"type": "status", "message": "Connected to Matrix bridge"})
+
         try:
-            data = await request.json()
-            await self.client.room_send(
-                room_id=data.get('room_id', self.room_id),
-                message_type="m.room.message",
-                content={"msgtype": "m.text", "body": data['message']}
-            )
-            return web.json_response({"status": "success"})
-        except Exception as e:
-            return web.json_response({"error": str(e)}, status=400)
+            # Process incoming WebSocket messages from the chatbot
+            async for msg in ws:
+                if msg.type == WSMsgType.TEXT:
+                    try:
+                        data = json.loads(msg.data)
+                        if data.get("type") == "send":
+                            # Relay chatbot message to Matrix room
+                            await self.client.room_send(
+                                room_id=data.get("room_id", self.room_id),
+                                message_type="m.room.message",
+                                content={"msgtype": "m.text", "body": data["message"]}
+                            )
+                        else:
+                            # Unknown message types are responded to with an error
+                            await ws.send_json({"type": "error", "message": "Unknown message type"})
+                    except Exception as e:
+                        # Catch and send JSON errors to the chatbot
+                        await ws.send_json({"type": "error", "message": str(e)})
+                elif msg.type == WSMsgType.ERROR:
+                    print("WebSocket error:", ws.exception())
+        finally:
+            # Cleanup if the chatbot disconnects
+            print("Chatbot disconnected.")
+            self.ws_client = None
 
-    # Handle receiving messages from the queue 
-    async def handle_receive(self, request):
-        try:
-            timeout = float(request.query.get('timeout', 1.0))
-            try:
-                message = await asyncio.wait_for(
-                    self.message_queue.get(),
-                    timeout=timeout
-                )
-                return web.json_response(message)
-            except asyncio.TimeoutError:
-                return web.json_response({"status": "no_messages"}, status=204)
-        except Exception as e:
-            return web.json_response({"error": str(e)}, status=500)
+        return ws  # Return the WebSocket connection object
 
+    # Gracefully close the Matrix client on shutdown
+    async def stop(self):
+        print("Shutting down...")
+        await self.client.close()
+
+# Run the bot when executed directly
 if __name__ == "__main__":
-    bot = MatrixWebhookBot()
-    asyncio.get_event_loop().run_until_complete(bot.start())
-    asyncio.get_event_loop().run_forever()
+    async def main():
+        bot = MatrixBridgeBot()
+        try:
+            await bot.start()
+            while True:
+                await asyncio.sleep(3600)  # Keep running indefinitely
+        except KeyboardInterrupt:
+            print("Interrupted by user.")
+        finally:
+            await bot.stop()
+
+    asyncio.run(main())
