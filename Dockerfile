@@ -12,9 +12,12 @@ RUN apt-get update && apt-get install -y \
 
 # Upgrade pip and install matrix-nio with e2e support
 RUN pip install --upgrade pip
+RUN pip install matrix-nio
+RUN pip install aiohttp
+RUN pip install dotenv
 
 COPY . .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "poc/websocket-poc.py"]
+CMD ["python", "src/main.py"]
