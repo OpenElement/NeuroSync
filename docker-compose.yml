@@ -1,0 +1,13 @@
+services:
+  neurosync:
+    build:
+      dockerfile: Dockerfile
+    container_name: NeuroHook
+    networks:
+      - matrix-net
+    ports:
+      - 8080:8080
+
+networks:
+  matrix-net:
+    external: true
