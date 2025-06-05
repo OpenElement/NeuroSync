@@ -14,7 +14,10 @@ async def main():
     # Load configuration
     try:
         config: AppConfig = load_app_config()
-
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
+    
     # Initialize and start MatrixRTC client
     matrix_rtc = MatrixRTC(
         homeserver=config.homeserver, user_id=config.user_id,
