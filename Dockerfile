@@ -4,6 +4,7 @@ WORKDIR /app
 
 # Install build tools and libolm3 (runtime) + libolm-dev (headers)
 RUN apt-get update && apt-get install -y \
+    git \
     build-essential \
     python3-dev \
     libolm3 \
@@ -13,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip and install matrix-nio with e2e support
 RUN pip install --upgrade pip
 RUN pip install matrix-nio[e2e]
-RUN pip install aiohttp
+RUN pip install aiohttp 
 RUN pip install dotenv
 
 COPY . .

@@ -31,8 +31,6 @@ class SendWebhook:
             return web.Response(text="username, display_name or uuid not in payload", status=400)
 
         # For now, just echo the username back.
-        # In a real application, you would use the username and password
-        # to create a bot or perform some other action.
         return web.json_response({"created_bot_username": username})
 
     async def create_user_handler(self, request: web.Request) -> web.Response:
@@ -42,18 +40,17 @@ class SendWebhook:
         except json.JSONDecodeError:
             return web.Response(text="Invalid JSON payload", status=400)
 
-        username = data.get("username")
-        display_name = data.get("display_name")
-        password = data.get("password")
+        username = data.get("username", None)
+        display_name = data.get("display_name", None)
+        uuid = data.get("uuid", None)
+        password = data.get("password", None)
         auto_invite = data.get("auto_invite", False)
-        recovery_email = data.get("recovery_email")
+        recovery_email = data.get("recovery_email", None)
 
-        if not username or not password:
-            return web.Response(text="Missing username or password in payload", status=400)
+        if not username or not display_name or not uuid:
+                    return web.Response(text="username, display_name or uuid not in payload", status=400)
 
         # For now, just echo the username back.
-        # In a real application, you would use the username and password
-        # to create a user or perform some other action.
         return web.json_response({"created_user_username": username})
 
 def register_routes(app: web.Application, secret: str):
