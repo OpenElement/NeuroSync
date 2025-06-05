@@ -24,7 +24,6 @@ class MatrixRTC:
             login_response = await self.client.login(self.client.access_token, device_name="NeuroSyncBridge")
             if isinstance(login_response, LoginError): # nio can return LoginError on failure
                 print(f"Login failed: {login_response.message}")
-                # Depending on severity, might want to raise an exception or prevent sync_forever
                 return
             print(f"Login successful. Device ID: {self.client.device_id}")
         # Stop if login fails catastrophically
