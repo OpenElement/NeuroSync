@@ -1,4 +1,4 @@
-# NeuroSync: Matrix Bridge and Extensible Server
+# NeuroSync: Matrix Bridge
 
 NeuroSync is an application that acts as a bridge to a Matrix homeserver, allowing communication via WebSockets. 
 
