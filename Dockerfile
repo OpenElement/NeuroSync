@@ -21,4 +21,4 @@ COPY . .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "poc/webhook-poc.py"]
+CMD ["python", "src/main.py"]
