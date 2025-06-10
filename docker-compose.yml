@@ -6,7 +6,11 @@ services:
     networks:
       - matrix-net
     ports:
-      - 8080:8080 
+      - 8080:8080
+    volumes:
+      # Mount the host's .env file into the container's working directory
+      # This makes changes inside the container persist on the host
+      - ./.env:/app/.env
 
 networks:
   matrix-net:
