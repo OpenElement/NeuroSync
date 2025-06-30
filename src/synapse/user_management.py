@@ -64,7 +64,7 @@ async def create_synapse_bot(
     displayname: str
 ) -> tuple[str, str]: 
 
-    Generate a secure password
+    # Generate a secure password
     password = secrets.token_urlsafe(16)
 
     # Use the existing create_synapse_user function to perform the actual user creation

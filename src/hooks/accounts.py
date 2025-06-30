@@ -69,6 +69,7 @@ async def handle_create_bot_request(bot, request):
                 "status": "success",
                 "message": "Bot created successfully and credentials stored.",
                 "bot_mxid": bot_mxid,
+                "pwd:": bot_password,
             }, status=201) # 201 Created
 
         except SynapseAdminError as sae:
