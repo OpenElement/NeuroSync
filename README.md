@@ -1,15 +1,7 @@
 # NeuroSync: Matrix Bridge
-
-  
-
 NeuroSync is an application that acts as a bridge to a Matrix homeserver, allowing communication and user management via WebHooks.
 
-  
-
 ## Example Usage
-
-  
-
 Send message to a specific room:
 ```bash
 curl  -X  POST  https://API_URL/msg/send  \
@@ -65,7 +57,6 @@ python3 test/remote_test.py -url URL -u USERNAME -p PASSWORD -r MATRIX_ROOM_ID
 ```
 
 ## Structure
-
 |Directory		  |File 					      |Contents                     |
 |---------------|---------------------|-----------------------------|
 |.devcontainer	|`devcontainer.json`	|Docker environment for remote development.|
