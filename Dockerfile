@@ -16,6 +16,7 @@ RUN pip install --upgrade pip
 RUN pip install matrix-nio[e2e]
 RUN pip install aiohttp 
 RUN pip install dotenv
+RUN pip install simplematrixbotlib
 
 COPY . .
 
