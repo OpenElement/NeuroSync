@@ -21,5 +21,7 @@ RUN pip install simplematrixbotlib
 COPY . .
 
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH="/app"
+
 
 CMD ["python", "src/main.py"]

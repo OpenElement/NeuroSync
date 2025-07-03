@@ -1,0 +1,52 @@
+# src/matrix_bot.py
+import asyncio
+import logging
+import simplematrixbotlib as botlib
+from .config import Config
+
+logger = logging.getLogger(__name__)
+
+# Manages the simplematrixbotlib bot instance and its events.
+class MatrixBot:
+    
+    def __init__(self, config: Config, message_queue: asyncio.Queue):
+        self.config = config
+        self.message_queue = message_queue
+        
+        creds = botlib.Creds(config.matrix_homeserver, config.matrix_user_id, config.matrix_password)
+        bot_config = botlib.Config()
+        bot_config.encryption_enabled = True
+        bot_config.store_path = config.store_path
+        bot_config.join_on_invite = True
+        
+        self.bot = botlib.Bot(creds, bot_config)
+        self._register_callbacks()
+
+    # Registers event listeners for the bot.
+    def _register_callbacks(self):
+        self.bot.listener.on_startup(self.on_startup)
+        self.bot.listener.on_message_event(self.on_message)
+
+    async def on_startup(self, room_id: str):
+        logger.info(f"Bot started up successfully in room: {room_id}")
+
+    # Puts incoming messages into the shared queue.
+    async def on_message(self, room, event):
+        if event.sender == self.config.matrix_user_id:
+            return
+        
+        await self.message_queue.put({
+            "room_id": room.room_id,
+            "sender": event.sender,
+            "message": event.body,
+            "timestamp": event.server_timestamp
+        })
+        logger.info(f"Queued message from {event.sender} in room {room.room_id}")
+
+    # Sends a message to a specified room.
+    async def send_message(self, room_id: str, message: str):
+        await self.bot.api.send_text_message(room_id, message)
+    
+    # Starts the bot's main loop.
+    async def run(self):
+        await self.bot.main()
