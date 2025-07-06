@@ -7,7 +7,7 @@ Send message to a specific room:
 curl  -X  POST  https://API_URL/msg/send  \
 	-H "Authorization: Bearer KEY" \
 	-H  "Content-Type: application/json"  \
-	-d '{"message":"Hello Matrix!", "room_id": "ROOM_ID"}'
+	-d '{"message":"Hello Matrix!", "user_id":"@USER:DOMAIN", "room_id": "ROOM_ID"}'
 ```
 
 Receive messages from a specific room:
