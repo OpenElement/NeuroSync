@@ -15,8 +15,8 @@ class SynapseAdminClient:
     # Creates a new user in Synapse.
     async def create_user(self, username: str, password: str, displayname: str = None, email: str = None, is_admin: bool = False):
 
-        api_endpoint = f"{self.base_url}/_synapse/admin/v2/users/@{username}:{self.base_url.split('://')[1]}"
-        
+        api_endpoint = f"{self.base_url}/_synapse/admin/v2/users/{username}"
+
         payload = {
             "password": password,
             "displayname": displayname or username,

@@ -25,7 +25,11 @@ async def main():
         
         synapse_client = None
         if config.synapse_admin_token:
-            synapse_client = SynapseAdminClient(config.matrix_homeserver, config.synapse_admin_token)
+            synapse_client = SynapseAdminClient(
+                config.matrix_homeserver, 
+                config.synapse_admin_token
+                )
+                
             logger.info("Synapse Admin Client initialized.")
         else:
             logger.warning("SYNAPSE_ADMIN_ACCESS_TOKEN not set. User creation endpoint will be disabled.")
