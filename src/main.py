@@ -1,4 +1,3 @@
-# main.py
 import asyncio
 import logging
 import sys
@@ -6,12 +5,12 @@ from src.config import Config, ConfigError
 from src.matrix_bot import MatrixBot
 from src.web_server import WebServer
 from src.synapse_client import SynapseAdminClient
+from src.database import init_db, get_all_bots
 
 # --- Configure Logging ---
-# (Logging configuration remains the same)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(levelname)s - %(message)s',
     stream=sys.stdout
 )
 logger = logging.getLogger(__name__)
@@ -20,6 +19,8 @@ logger = logging.getLogger(__name__)
 # Initializes and runs the bot and web server for NeuroSync.
 async def main():
     try:
+        # Initialize database and config
+        await init_db()
         config = Config()
         message_queue = asyncio.Queue()
         
@@ -28,14 +29,15 @@ async def main():
             synapse_client = SynapseAdminClient(
                 config.matrix_homeserver, 
                 config.synapse_admin_token
-                )
-                
+            )
             logger.info("Synapse Admin Client initialized.")
         else:
             logger.warning("SYNAPSE_ADMIN_ACCESS_TOKEN not set. User creation endpoint will be disabled.")
 
         bots = {}
-        for bot_config in config.bots:
+        bot_configs = await get_all_bots()
+
+        for bot_config in bot_configs:
             user_id = bot_config['user_id']
             bot = MatrixBot(
                 homeserver=config.matrix_homeserver,
@@ -47,17 +49,16 @@ async def main():
             bots[user_id] = bot
         
         if not bots:
-            logger.warning("No bots configured to run. Check your .env file for NUM_BOTS and bot credentials.")
-
-        # Pass the dictionary of bot instances to the web server
-        web_server = WebServer(config, bots, synapse_client, message_queue)
+            logger.warning("No bots found in the database. The application will start with 0 bots.")
 
         # Create tasks for each component
         bot_tasks = [asyncio.create_task(bot.run()) for bot in bots.values()]
-        web_task = asyncio.create_task(web_server.run())
+        
+        web_server = WebServer(config, bots, bot_tasks, synapse_client, message_queue)
 
         logger.info(f"NeuroSync is starting with {len(bots)} bot(s)...")
-        await asyncio.gather(*bot_tasks, web_task)
+        web_task = asyncio.create_task(web_server.run())
+        await web_task
 
     except ConfigError as e:
         logger.critical(f"Configuration Error: {e}")

@@ -17,6 +17,7 @@ RUN pip install matrix-nio[e2e]
 RUN pip install aiohttp 
 RUN pip install dotenv
 RUN pip install simplematrixbotlib
+RUN pip install aiosqlite
 
 COPY . .
 

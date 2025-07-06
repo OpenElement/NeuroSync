@@ -183,3 +183,7 @@ cython_debug/
 # Crypto Data
 crypto_data/*
 crypto_data/
+
+# Database
+data/
+data/*

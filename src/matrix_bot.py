@@ -1,8 +1,6 @@
-# src/matrix_bot.py
 import asyncio
 import logging
 import simplematrixbotlib as botlib
-# We no longer need Config here, as specific bot details are passed in.
 
 logger = logging.getLogger(__name__)
 

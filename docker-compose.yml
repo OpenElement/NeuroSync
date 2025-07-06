@@ -9,6 +9,7 @@ services:
     volumes:
       - ./crypto_data:/app/crypto_store
       - ./.env:/app/.env
+      - ./data:/app/data
     networks:
       - matrix-net
     ports:

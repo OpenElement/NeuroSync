@@ -1,4 +1,3 @@
-# src/synapse_client.py
 import aiohttp
 
 # A client for interacting with the Synapse Admin API.
@@ -34,5 +33,4 @@ class SynapseAdminClient:
                     error_data = await response.json() if response.content_type == 'application/json' else {}
                     error_msg = error_data.get("errcode") or error_data.get("error", f"HTTP Status {response.status}")
                     
-                    # Raise a general exception for the web server to catch
                     raise Exception(f"Failed to create Synapse user: {error_msg}")
