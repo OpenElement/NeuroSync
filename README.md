@@ -17,6 +17,15 @@ curl  -X  POST  https://API_URL/msg/receive  \
 	-H  "Content-Type: application/json"  \
 	-d '{"room_id": "ROOM_ID"}'
 ```
+
+Receive messages from all rooms:
+```bash
+curl  -X  POST  https://API_URL/msg/receive  \
+	-H "Authorization: Bearer KEY" \
+	-H  "Content-Type: application/json"  \
+	-d '{"room_id": "ALL"}'
+```
+
 Create a new user
 ```bash
 curl  -X  POST  https://API_URL/create/user  \

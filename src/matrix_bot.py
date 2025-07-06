@@ -30,13 +30,14 @@ class MatrixBot:
     async def on_startup(self, room_id: str):
         logger.info(f"Bot '{self.user_id}' started up successfully in room: {room_id}")
 
-    # Puts incoming messages into the shared queue.
+# Puts incoming messages into the shared queue.
     async def on_message(self, room, event):
         # Use the instance's user_id to ignore its own messages
         if event.sender == self.user_id:
             return
         
         await self.message_queue.put({
+            "collector_bot": self.user_id,
             "room_id": room.room_id,
             "sender": event.sender,
             "message": event.body,
