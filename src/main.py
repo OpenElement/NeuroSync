@@ -8,12 +8,14 @@ from src.web_server import WebServer
 from src.synapse_client import SynapseAdminClient
 
 # --- Configure Logging ---
+# (Logging configuration remains the same)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     stream=sys.stdout
 )
 logger = logging.getLogger(__name__)
+
 
 # Initializes and runs the bot and web server for NeuroSync.
 async def main():
@@ -28,14 +30,30 @@ async def main():
         else:
             logger.warning("SYNAPSE_ADMIN_ACCESS_TOKEN not set. User creation endpoint will be disabled.")
 
-        matrix_bot = MatrixBot(config, message_queue)
-        web_server = WebServer(config, matrix_bot, synapse_client, message_queue)
+        bots = {}
+        for bot_config in config.bots:
+            user_id = bot_config['user_id']
+            bot = MatrixBot(
+                homeserver=config.matrix_homeserver,
+                user_id=user_id,
+                password=bot_config['password'],
+                store_path=bot_config['store_path'],
+                message_queue=message_queue
+            )
+            bots[user_id] = bot
+        
+        if not bots:
+            logger.warning("No bots configured to run. Check your .env file for NUM_BOTS and bot credentials.")
 
-        bot_task = asyncio.create_task(matrix_bot.run())
+        # Pass the dictionary of bot instances to the web server
+        web_server = WebServer(config, bots, synapse_client, message_queue)
+
+        # Create tasks for each component
+        bot_tasks = [asyncio.create_task(bot.run()) for bot in bots.values()]
         web_task = asyncio.create_task(web_server.run())
 
-        logger.info("NeuroSync is starting...")
-        await asyncio.gather(bot_task, web_task)
+        logger.info(f"NeuroSync is starting with {len(bots)} bot(s)...")
+        await asyncio.gather(*bot_tasks, web_task)
 
     except ConfigError as e:
         logger.critical(f"Configuration Error: {e}")

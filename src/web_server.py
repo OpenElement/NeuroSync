@@ -4,16 +4,16 @@ import json
 import logging
 from aiohttp import web
 from .config import Config
-from .matrix_bot import MatrixBot
+from .matrix_bot import MatrixBot  # This import is still useful for type hinting
 from .synapse_client import SynapseAdminClient
 
 logger = logging.getLogger(__name__)
 
 # Manages the aiohttp web application and its endpoints.
 class WebServer:
-    def __init__(self, config: Config, bot: MatrixBot, synapse_client: SynapseAdminClient, message_queue: asyncio.Queue):
+    def __init__(self, config: Config, bots: dict[str, MatrixBot], synapse_client: SynapseAdminClient, message_queue: asyncio.Queue):
         self.config = config
-        self.bot = bot
+        self.bots = bots  # Now a dictionary of bot instances
         self.synapse_client = synapse_client
         self.message_queue = message_queue
         self.app = web.Application(middlewares=[self.auth_middleware])
@@ -28,7 +28,7 @@ class WebServer:
         ])
 
     @web.middleware
-    # Authenticates requests using the webhook secret.
+    # (auth_middleware remains the same)
     async def auth_middleware(self, request, handler):
         auth_header = request.headers.get("Authorization")
         if auth_header != f"Bearer {self.config.webhook_secret}":
@@ -38,16 +38,24 @@ class WebServer:
     async def handle_send(self, request):
         try:
             data = await request.json()
-            room_id, message = data.get('room_id'), data.get('message')
-            if not all([room_id, message]):
-                return web.json_response({"error": "room_id and message required"}, status=400)
+            user_id = data.get('user_id')
+            room_id = data.get('room_id')
+            message = data.get('message')
+
+            if not all([user_id, room_id, message]):
+                return web.json_response({"error": "user_id, room_id, and message are required"}, status=400)
             
-            await self.bot.send_message(room_id, message)
-            return web.json_response({"status": "success"})
+            bot = self.bots.get(user_id)
+            if not bot:
+                return web.json_response({"error": f"Bot with user_id '{user_id}' not found or not initialized."}, status=404)
+            
+            await bot.send_message(room_id, message)
+            return web.json_response({"status": "success", "sender": user_id})
         except Exception as e:
             logger.error(f"Send error: {e}")
             return web.json_response({"error": "Failed to send message"}, status=500)
 
+    # (handle_receive and handle_create_user remain the same as they don't directly interact with a specific bot instance)
     async def handle_receive(self, request):
         params = request.query if request.method == 'GET' else await request.json()
         room_id = params.get('room_id')
@@ -88,8 +96,8 @@ class WebServer:
             # Catches the general exception from Synapse client and other errors
             logger.error(f"User creation error: {e}")
             return web.json_response({"error": str(e)}, status=400)
-    
-    # Starts the aiohttp web server.
+            
+    # (run method remains the same)
     async def run(self, host='0.0.0.0', port=8080):
         runner = web.AppRunner(self.app)
         await runner.setup()

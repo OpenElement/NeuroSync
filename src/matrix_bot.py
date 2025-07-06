@@ -2,21 +2,21 @@
 import asyncio
 import logging
 import simplematrixbotlib as botlib
-from .config import Config
+# We no longer need Config here, as specific bot details are passed in.
 
 logger = logging.getLogger(__name__)
 
 # Manages the simplematrixbotlib bot instance and its events.
 class MatrixBot:
     
-    def __init__(self, config: Config, message_queue: asyncio.Queue):
-        self.config = config
+    def __init__(self, homeserver: str, user_id: str, password: str, store_path: str, message_queue: asyncio.Queue):
+        self.user_id = user_id
         self.message_queue = message_queue
         
-        creds = botlib.Creds(config.matrix_homeserver, config.matrix_user_id, config.matrix_password)
+        creds = botlib.Creds(homeserver, user_id, password)
         bot_config = botlib.Config()
         bot_config.encryption_enabled = True
-        bot_config.store_path = config.store_path
+        bot_config.store_path = store_path
         bot_config.join_on_invite = True
         
         self.bot = botlib.Bot(creds, bot_config)
@@ -28,11 +28,12 @@ class MatrixBot:
         self.bot.listener.on_message_event(self.on_message)
 
     async def on_startup(self, room_id: str):
-        logger.info(f"Bot started up successfully in room: {room_id}")
+        logger.info(f"Bot '{self.user_id}' started up successfully in room: {room_id}")
 
     # Puts incoming messages into the shared queue.
     async def on_message(self, room, event):
-        if event.sender == self.config.matrix_user_id:
+        # Use the instance's user_id to ignore its own messages
+        if event.sender == self.user_id:
             return
         
         await self.message_queue.put({
