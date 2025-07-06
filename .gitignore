@@ -175,6 +175,11 @@ cython_debug/
 
 # Docker
 .devcontainer/*
+.devcontainer/
 
 # VS Code
 .vscode/
+
+# Crypto Data
+crypto_data/*
+crypto_data/
