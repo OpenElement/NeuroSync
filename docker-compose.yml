@@ -4,13 +4,11 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: NeuroSync
-    # Use env_file to load your .env variables at runtime
     env_file:
       - .env
     volumes:
-      # Map a local directory to the crypto_store inside the container
-      # This path must match what's used in your application
-      - ./crypto_data:/app/crypto_store 
+      - ./crypto_data:/app/crypto_store
+      - ./.env:/app/.env
     networks:
       - matrix-net
     ports:
