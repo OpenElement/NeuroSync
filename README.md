@@ -7,7 +7,7 @@ Send message to a specific room:
 curl  -X  POST  https://API_URL/msg/send  \
 	-H "Authorization: Bearer KEY" \
 	-H  "Content-Type: application/json"  \
-	-d '{"message":"Hello Matrix!", "user_id":"@USER:DOMAIN", "room_id": "ROOM_ID"}'
+	-d '{"message":"Hello Matrix!", "user_id":"@BOT:DOMAIN", "room_id": "ROOM_ID"}'
 ```
 
 Receive messages from a specific room:
@@ -29,9 +29,17 @@ curl  -X  POST  https://API_URL/msg/receive  \
 Create a new user
 ```bash
 curl  -X  POST  https://API_URL/create/user  \
-	-H "Authorization: Bearer apples" \
+	-H "Authorization: Bearer KEY" \
 	-H  "Content-Type: application/json"  \
 	-d '{"username":"@USER:DOMAIN", "password":"PASSWORD"}'
+```
+
+Create a new bot
+```bash
+curl  -X  POST  https://API_URL/create/user  \
+	-H "Authorization: Bearer KEY" \
+	-H  "Content-Type: application/json"  \
+	-d '{"username":"@BOT:DOMAIN"}'
 ```
 
 ## Setup Instructions
@@ -44,14 +52,10 @@ cd NeuroSync/
 2. Create a `.env` file. 
 ```bash
 # Matrix Configuration
+# --- General Settings ---
 MATRIX_HOMESERVER=
-MATRIX_USER_ID=
-MATRIX_PASSWORD=
-
-# Webhook Configuration
+MATRIX_SERVER_NAME=
 WEBHOOK_SECRET=
-
-# Synapse Config
 SYNAPSE_ADMIN_ACCESS_TOKEN=
 ```
 
@@ -60,23 +64,10 @@ SYNAPSE_ADMIN_ACCESS_TOKEN=
 docker compose up --build -d
 ```
 
-4. Test the webhooks
+4. Create your first bot account:
 ```bash
-python3 test/remote_test.py -url URL -u USERNAME -p PASSWORD -r MATRIX_ROOM_ID
+curl  -X  POST  https://API_URL/create/user  \
+	-H "Authorization: Bearer KEY" \
+	-H  "Content-Type: application/json"  \
+	-d '{"username":"@BOT:DOMAIN"}'
 ```
-
-## Structure
-|Directory		  |File 					      |Contents                     |
-|---------------|---------------------|-----------------------------|
-|.devcontainer	|`devcontainer.json`	|Docker environment for remote development.|
-|src			      |`config.py`			    |The main entry point that initialises and runs all the components of the application.|
-| 				      |`main.py`				    |Manages application configuration by loading settings from environment variables.|
-|				        |`matrix_bridge.py`		|Contains the logic for the Matrix bot, handling message events and interactions within Matrix rooms.|
-|				        |`webserver.py`			  |Implements an `aiohttp` web server that exposes endpoints to send and receive Matrix messages, and to create users.|
-|				        |`synapse_client.py`	|A client library for interacting with the Synapse Admin API, specifically for user creation.|
-||||
-|			        	|`.env`					      |Holds all login credentials, must be created by the user.|
-|				        |`Dockerfile`			    ||
-|			        	|`docker-compose.yml`	||
-
-
