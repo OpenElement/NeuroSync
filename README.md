@@ -66,7 +66,7 @@ docker compose up --build -d
 
 4. Create your first bot account:
 ```bash
-curl  -X  POST  https://API_URL/create/user  \
+curl  -X  POST  https://API_URL/create/bot  \
 	-H "Authorization: Bearer KEY" \
 	-H  "Content-Type: application/json"  \
 	-d '{"username":"@BOT:DOMAIN"}'
