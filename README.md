@@ -52,7 +52,6 @@ cd NeuroSync/
 2. Create a `.env` file. 
 ```bash
 # Matrix Configuration
-# --- General Settings ---
 MATRIX_HOMESERVER=
 MATRIX_SERVER_NAME=
 WEBHOOK_SECRET=
