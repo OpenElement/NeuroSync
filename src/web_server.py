@@ -8,7 +8,7 @@ from aiohttp import web
 from .config import Config
 from .matrix_bot import MatrixBot
 from .synapse_client import SynapseAdminClient
-from .database import add_bot
+from .database import add_bot, get_all_bots
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +31,35 @@ class WebServer:
             web.post('/create/bot', self.handle_create_bot),
         ])
 
-    # Generates a secure password suitable for .env files.
-    def _generate_secure_password(self, length=24):
+    # Generates a secure random string suitable for passwords and webhook secrets.
+    def _generate_secure_string(self, length=32):
         alphabet = string.ascii_letters + string.digits
-        password = ''.join(secrets.choice(alphabet) for i in range(length))
-        return password
+        return ''.join(secrets.choice(alphabet) for i in range(length))
 
     @web.middleware
     async def auth_middleware(self, request, handler):
         auth_header = request.headers.get("Authorization")
-        if auth_header != f"Bearer {self.config.webhook_secret}":
+        if not auth_header or not auth_header.startswith("Bearer "):
             return web.json_response({"error": "Unauthorized"}, status=401)
-        return await handler(request)
+        
+        token = auth_header.replace("Bearer ", "")
+        path = request.path
+        
+        # Admin endpoints - check admin token
+        admin_endpoints = ['/create/user', '/create/bot']
+        if path in admin_endpoints:
+            if self.config.webhook_secret and token == self.config.webhook_secret:
+                return await handler(request)
+            return web.json_response({"error": "Unauthorized"}, status=401)
+        
+        # Bot endpoints - check bot token
+        bot_configs = await get_all_bots()
+        for bot_config in bot_configs:
+            if bot_config['webhook_secret'] == token:
+                request['authenticated_user_id'] = bot_config['user_id']
+                return await handler(request)
+        
+        return web.json_response({"error": "Unauthorized"}, status=401)
 
     async def handle_send(self, request):
         try:
@@ -123,7 +140,7 @@ class WebServer:
         except json.JSONDecodeError:
             return web.json_response({"error": "Invalid JSON payload"}, status=400)
 
-        password = self._generate_secure_password()
+        password = self._generate_secure_string(24)  # 24 chars for password
         
         try:
             # Create the user in Synapse
@@ -133,7 +150,8 @@ class WebServer:
 
             # Add the new bot to the database
             store_path = f"./crypto_store/{username}/"
-            await add_bot(user_id, password, store_path)
+            webhook_secret = self._generate_secure_string(32)  # 32 chars for webhook secret
+            await add_bot(user_id, password, store_path, webhook_secret)
 
             # Create and start the new bot instance dynamically
             new_bot = MatrixBot(
@@ -153,6 +171,7 @@ class WebServer:
                 "status": "success",
                 "user_id": user_id,
                 "password": password,
+                "webhook_secret": webhook_secret,
                 "message": "Bot created and is now active."
             }, status=201)
 
