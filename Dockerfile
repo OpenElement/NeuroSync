@@ -18,6 +18,7 @@ RUN pip install aiohttp
 RUN pip install dotenv
 RUN pip install simplematrixbotlib
 RUN pip install aiosqlite
+RUN pip install sqlalchemy[asyncio]
 
 COPY . .
 

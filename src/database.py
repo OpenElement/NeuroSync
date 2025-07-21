@@ -1,41 +1,48 @@
-import aiosqlite
 import logging
+from sqlalchemy import Column, String, create_engine, select
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = "data/bots.db"
+DB_URL = "sqlite+aiosqlite:///data/bots.db"
+
+Base = declarative_base()
+
+class Bot(Base):
+    __tablename__ = "bots"
+    
+    user_id = Column(String, primary_key=True)
+    password = Column(String, nullable=False)
+    store_path = Column(String, nullable=False)
+
+engine = create_async_engine(DB_URL, echo=False)
+async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 # Initializes the database and creates the bots table if it doesn't exist
 async def init_db():
-
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS bots (
-                user_id TEXT PRIMARY KEY,
-                password TEXT NOT NULL,
-                store_path TEXT NOT NULL
-            )
-        """)
-        await db.commit()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     logger.info("Database initialized successfully.")
 
 # Retrieves all bot configurations from the database
 async def get_all_bots():
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM bots") as cursor:
-            return await cursor.fetchall()
+    async with async_session() as session:
+        result = await session.execute(select(Bot))
+        bots = result.scalars().all()
+        # Return dict format for compatibility
+        return [{"user_id": bot.user_id, "password": bot.password, "store_path": bot.store_path} for bot in bots]
 
 # Adds a new bot to the database.
 async def add_bot(user_id: str, password: str, store_path: str):
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with async_session() as session:
         try:
-            await db.execute(
-                "INSERT INTO bots (user_id, password, store_path) VALUES (?, ?, ?)",
-                (user_id, password, store_path)
-            )
-            await db.commit()
+            new_bot = Bot(user_id=user_id, password=password, store_path=store_path)
+            session.add(new_bot)
+            await session.commit()
             logger.info(f"Added new bot {user_id} to the database.")
-        except aiosqlite.IntegrityError:
+        except IntegrityError:
+            await session.rollback()
             logger.error(f"Bot with user_id {user_id} already exists in the database.")
             raise Exception(f"Bot {user_id} already exists.")
