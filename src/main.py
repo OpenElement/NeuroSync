@@ -5,7 +5,7 @@ from src.config import Config, ConfigError
 from src.matrix_bot import MatrixBot
 from src.web_server import WebServer
 from src.synapse_client import SynapseAdminClient
-from src.database import init_db, get_all_bots
+from src.database import init_db
 
 # --- Configure Logging ---
 logging.basicConfig(
@@ -35,24 +35,9 @@ async def main():
             logger.warning("SYNAPSE_ADMIN_ACCESS_TOKEN not set. User creation endpoint will be disabled.")
 
         bots = {}
-        bot_configs = await get_all_bots()
-
-        for bot_config in bot_configs:
-            user_id = bot_config['user_id']
-            bot = MatrixBot(
-                homeserver=config.matrix_homeserver,
-                user_id=user_id,
-                password=bot_config['password'],
-                store_path=bot_config['store_path'],
-                message_queue=message_queue
-            )
-            bots[user_id] = bot
         
-        if not bots:
-            logger.warning("No bots found in the database. The application will start with 0 bots.")
-
-        # Create tasks for each component
-        bot_tasks = [asyncio.create_task(bot.run()) for bot in bots.values()]
+        # Create tasks for each component - no bot tasks initially
+        bot_tasks = []
         
         web_server = WebServer(config, bots, bot_tasks, synapse_client, message_queue)
 
