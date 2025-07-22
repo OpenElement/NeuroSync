@@ -30,7 +30,6 @@ class MatrixBot:
 
 # Puts incoming messages into the shared queue.
     async def on_message(self, room, event):
-        # Use the instance's user_id to ignore its own messages
         if event.sender == self.user_id:
             return
         

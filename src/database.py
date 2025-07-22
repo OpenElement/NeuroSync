@@ -33,7 +33,6 @@ async def get_all_bots():
     async with async_session() as session:
         result = await session.execute(select(Bot))
         bots = result.scalars().all()
-        # Return dict format for compatibility
         return [{"user_id": bot.user_id, "password": bot.password, "store_path": bot.store_path, "webhook_secret": bot.webhook_secret, "active": bot.active} for bot in bots]
 
 # Retrieves only active bot configurations from the database
