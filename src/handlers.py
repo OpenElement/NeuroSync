@@ -6,7 +6,7 @@ import string
 from aiohttp import web
 from .matrix_bot import MatrixBot
 from .synapse_client import SynapseAdminClient
-from .database import add_bot, get_bot_by_user_id, set_bot_active_status
+from .database import add_bot, get_bot_by_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,10 @@ class RequestHandlers:
         self.bot_task_map = bot_task_map
         self.synapse_client = synapse_client
         self.message_queue = message_queue
+        self.webhook_registrations = {}
 
-    # Generates a secure random string suitable for passwords and webhook secrets.
-    def _generate_secure_string(self, length=32):
+    # Generates a secure random string
+    def _generate_secure_string(self, length=24):
         alphabet = string.ascii_letters + string.digits
         return ''.join(secrets.choice(alphabet) for i in range(length))
     
@@ -102,8 +103,9 @@ class RequestHandlers:
         try:
             data = await request.json()
             username = data.get('username')
-            if not username:
-                return web.json_response({"error": "username is required"}, status=400)
+            webhook_secret = data.get('webhook_secret')
+            if not username or not webhook_secret:
+                return web.json_response({"error": "username and webhook_secret are required"}, status=400)
         except json.JSONDecodeError:
             return web.json_response({"error": "Invalid JSON payload"}, status=400)
 
@@ -117,7 +119,6 @@ class RequestHandlers:
 
             # Add the new bot to the database.
             store_path = f"./crypto_store/{username}/"
-            webhook_secret = self._generate_secure_string(32)
             await add_bot(user_id, password, store_path, webhook_secret)
 
             logger.info(f"Successfully created bot '{user_id}'.")
@@ -159,10 +160,6 @@ class RequestHandlers:
             if not bot_config:
                 return web.json_response({"error": f"Bot with user_id '{username}' not found"}, status=404)
             
-            # Check if already active
-            if bot_config['active']:
-                return web.json_response({"error": f"Bot '{username}' is already active"}, status=409)
-            
             # Check if bot instance already exists
             if user_id in self.bots:
                 return web.json_response({"error": f"Bot '{username}' is already running"}, status=409)
@@ -180,9 +177,6 @@ class RequestHandlers:
             new_task = asyncio.create_task(new_bot.run())
             self.bot_tasks.append(new_task)
             self.bot_task_map[user_id] = new_task 
-            
-            # Update database
-            await set_bot_active_status(user_id, True)
             
             logger.info(f"Successfully activated bot {user_id}")
             
@@ -222,14 +216,9 @@ class RequestHandlers:
             if not bot_config:
                 return web.json_response({"error": f"Bot with user_id '{username}' not found"}, status=404)
             
-            # Check if already inactive
-            if not bot_config['active']:
-                return web.json_response({"error": f"Bot '{username}' is already inactive"}, status=409)
-            
             # Check if bot instance exists
             if user_id not in self.bots:
-                await set_bot_active_status(user_id, False)
-                return web.json_response({"error": f"Bot '{username}' was not running (status corrected)"}, status=404)
+                return web.json_response({"error": f"Bot '{username}' was not running"}, status=404)
             
             # Cancel the specific bot task
             if user_id in self.bot_task_map:
@@ -251,10 +240,7 @@ class RequestHandlers:
             # Remove the bot from active bots
             del self.bots[user_id]
             
-            # Update database
-            await set_bot_active_status(user_id, False)
-            
-            logger.info(f"Successfully deactivated bot{user_id}")
+            logger.info(f"Successfully deactivated bot {user_id}")
             
             return web.json_response({
                 "status": "success",
@@ -264,3 +250,71 @@ class RequestHandlers:
         except Exception as e:
             logger.error(f"Bot deactivation error: {e}", exc_info=True)
             return web.json_response({"error": f"Failed to deactivate bot: {e}"}, status=500)
+
+    # Handles webhook registration for bots
+    async def handle_register_webhook(self, request):
+        try:
+            data = await request.json()
+            username = data.get('username')
+            webhook_url = data.get('webhook_url')
+            
+            if not all([username, webhook_url]):
+                return web.json_response({"error": "username and webhook_url are required"}, status=400)
+                
+            # Get the authenticated user_id from auth_middleware
+            authenticated_user_id = request.get('authenticated_user_id')
+            
+            # Verify the authenticated user matches the requested bot
+            if authenticated_user_id != username:
+                return web.json_response({"error": "Bearer token does not match the requested bot"}, status=401)
+            
+            # Validate webhook URL format
+            if not (webhook_url.startswith('http://') or webhook_url.startswith('https://')):
+                return web.json_response({"error": "webhook_url must be a valid HTTP/HTTPS URL"}, status=400)
+            
+            # Store the webhook registration in memory
+            self.webhook_registrations[username] = webhook_url
+            
+            logger.info(f"Registered webhook for bot '{username}': {webhook_url}")
+            
+            return web.json_response({
+                "status": "success"
+            }, status=200)
+            
+        except json.JSONDecodeError:
+            return web.json_response({"error": "Invalid JSON payload"}, status=400)
+        except Exception as e:
+            logger.error(f"Webhook registration error: {e}", exc_info=True)
+            return web.json_response({"error": f"Failed to register webhook: {e}"}, status=500)
+
+    # Handles webhook unregistration for bots
+    async def handle_unregister_webhook(self, request):
+        try:
+            data = await request.json()
+            username = data.get('username')
+            
+            if not username:
+                return web.json_response({"error": "username is required"}, status=400)
+                
+            # Get the authenticated user_id from auth_middleware
+            authenticated_user_id = request.get('authenticated_user_id')
+            
+            # Verify the authenticated user matches the requested bot
+            if authenticated_user_id != username:
+                return web.json_response({"error": "Bearer token does not match the requested bot"}, status=401)
+            
+            # Remove the webhook registration if it exists
+            if username in self.webhook_registrations:
+                del self.webhook_registrations[username]
+                logger.info(f"Unregistered webhook for bot '{username}'")
+                return web.json_response({
+                    "status": "success"
+                }, status=200)
+            else:
+                return web.json_response({"error": f"No webhook registered for bot '{username}'"}, status=404)
+            
+        except json.JSONDecodeError:
+            return web.json_response({"error": "Invalid JSON payload"}, status=400)
+        except Exception as e:
+            logger.error(f"Webhook unregistration error: {e}", exc_info=True)
+            return web.json_response({"error": f"Failed to unregister webhook: {e}"}, status=500)

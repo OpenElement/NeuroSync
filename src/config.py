@@ -12,8 +12,8 @@ class Config:
 
         # General configuration
         self.matrix_homeserver = os.getenv("MATRIX_HOMESERVER")
-        self.webhook_secret = os.getenv("WEBHOOK_SECRET")
-        self.synapse_admin_token = os.getenv("SYNAPSE_ADMIN_ACCESS_TOKEN")
+        self.webhook_secret = os.getenv("NS_ADMIN_TOKEN")
+        self.synapse_admin_token = os.getenv("SYNAPSE_ADMIN_TOKEN")
 
         if not self.matrix_homeserver or not self.webhook_secret:
-            raise ConfigError("Missing required environment variables: MATRIX_HOMESERVER, WEBHOOK_SECRET")
+            raise ConfigError("Missing required environment variables: MATRIX_HOMESERVER, NS_ADMIN_TOKEN")
