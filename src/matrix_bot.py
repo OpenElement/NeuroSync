@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 import simplematrixbotlib as botlib
 
 logger = logging.getLogger(__name__)
@@ -10,6 +11,7 @@ class MatrixBot:
     def __init__(self, homeserver: str, user_id: str, password: str, store_path: str, message_queue: asyncio.Queue):
         self.user_id = user_id
         self.message_queue = message_queue
+        self.start_time = time.time()
         
         creds = botlib.Creds(homeserver, user_id, password)
         bot_config = botlib.Config()
@@ -45,6 +47,10 @@ class MatrixBot:
     # Sends a message to a specified room.
     async def send_message(self, room_id: str, message: str):
         await self.bot.api.send_text_message(room_id, message)
+        
+    # Gets the uptime of the bot in seconds
+    def get_uptime(self):
+        return time.time() - self.start_time
     
     # Starts the bot's main loop.
     async def run(self):

@@ -74,6 +74,7 @@ class WebServer:
             web.post('/bot/create', self.handlers.handle_create_bot),
             web.post('/bot/activate', self.handlers.handle_activate_bot),
             web.post('/bot/deactivate', self.handlers.handle_deactivate_bot),
+            web.post('/bot/status', self.handlers.handle_bot_status),
         ])
 
     # Process messages from the queue and trigger webhook notifications

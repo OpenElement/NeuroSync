@@ -318,3 +318,52 @@ class RequestHandlers:
         except Exception as e:
             logger.error(f"Webhook unregistration error: {e}", exc_info=True)
             return web.json_response({"error": f"Failed to unregister webhook: {e}"}, status=500)
+
+    # Handles bot status requests
+    async def handle_bot_status(self, request):
+        try:
+            data = await request.json()
+            username = data.get('username')
+            
+            if not username:
+                return web.json_response({"error": "username is required"}, status=400)
+                
+            # Get the authenticated user_id from auth_middleware
+            authenticated_user_id = request.get('authenticated_user_id')
+            
+            # Verify the authenticated user matches the requested bot
+            if authenticated_user_id != username:
+                return web.json_response({"error": "Bearer token does not match the requested bot"}, status=401)
+            
+            # Get bot config from database
+            bot_config = await get_bot_by_user_id(username)
+            if not bot_config:
+                return web.json_response({"error": f"Bot with user_id '{username}' not found"}, status=404)
+            
+            # Check if bot is active (running)
+            is_active = username in self.bots
+            bot_instance = self.bots.get(username) if is_active else None
+            
+            # Get webhook registration URL
+            registration_url = self.webhook_registrations.get(username)
+            
+            # Calculate uptime
+            uptime_seconds = bot_instance.get_uptime() if bot_instance else 0
+            
+            # Count messages in queue for this bot (approximate)
+            queue_size = self.message_queue.qsize()
+            
+            return web.json_response({
+                "status": "success",
+                "user_id": username,
+                "uptime_seconds": uptime_seconds,
+                "is_active": is_active,
+                "registration_url": registration_url,
+                "messages_queued": queue_size
+            }, status=200)
+            
+        except json.JSONDecodeError:
+            return web.json_response({"error": "Invalid JSON payload"}, status=400)
+        except Exception as e:
+            logger.error(f"Bot status error: {e}", exc_info=True)
+            return web.json_response({"error": f"Failed to get bot status: {e}"}, status=500)
