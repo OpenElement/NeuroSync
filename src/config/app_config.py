@@ -19,7 +19,7 @@ class Config:
         self.matrix_homeserver = os.getenv("MATRIX_HOMESERVER")
         self.admin_token = os.getenv("NS_ADMIN_TOKEN")
         self.synapse_admin_token = os.getenv("SYNAPSE_ADMIN_TOKEN")
-        self.db_url = os.getenv("sqlite+aiosqlite:///data/bots.db")
+        self.db_url = "sqlite+aiosqlite:///data/bots.db"
 
         if not self.matrix_homeserver or not self.admin_token:
             raise ConfigError("Missing required env vars: MATRIX_HOMESERVER, NS_ADMIN_TOKEN")
@@ -76,3 +76,29 @@ async def add_bot(user_id: str, password: str, store_path: str, webhook_secret: 
             await session.rollback()
             logger.error(f"Bot with user_id {user_id} already exists.")
             raise ValueError(f"Bot {user_id} already exists.")
+        
+# Deletes a bot from the database.
+async def delete_bot(user_id: str):
+    async with async_session_factory() as session:
+        try:
+            await session.execute(select(Bot).where(Bot.user_id == user_id))
+            await session.commit()
+            logger.info(f"Deleted bot {user_id} from the database.")
+        except Exception as e:
+            logger.error(f"Failed to delete bot {user_id}: {e}")
+            raise ValueError(f"Failed to delete bot {user_id}: {e}")
+        
+# Updates the webhook secret for a bot.
+async def update_bot_webhook_secret(user_id: str, new_secret: str):
+    async with async_session_factory() as session:
+        try:
+            bot = await session.execute(select(Bot).where(Bot.user_id == user_id))
+            bot = bot.scalar_one_or_none()
+            if not bot:
+                raise ValueError(f"Bot {user_id} does not exist.")
+            bot.webhook_secret = new_secret
+            await session.commit()
+            logger.info(f"Updated webhook secret for bot {user_id}.")
+        except Exception as e:
+            logger.error(f"Failed to update webhook secret for bot {user_id}: {e}")
+            raise ValueError(f"Failed to update webhook secret for bot {user_id}: {e}")

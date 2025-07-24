@@ -20,7 +20,7 @@ class WebServer:
         self.http_session = None
         
         # Instantiate handlers
-        admin_handlers = AdminHandlers(synapse_client, self.add_bot_token)
+        admin_handlers = AdminHandlers(synapse_client, self.add_bot_token, self.bots_state)
         self.message_handlers = MessageHandlers(config, message_dispatcher, self.bots_state, None)
         
         self._setup_routes(admin_handlers, self.message_handlers)
@@ -40,7 +40,7 @@ class WebServer:
         token = auth_header.split(" ")[1]
         
         # Admin endpoints check the global admin token.
-        if request.path in ['/user/create', '/bot/create']:
+        if request.path in ['/user/create', '/bot/create', '/user/delete', '/bot/auth', '/bot/delete']:
             if self.config.admin_token and token == self.config.admin_token:
                 return await handler(request)
             return web.json_response({"error": "Unauthorized: Invalid admin token"}, status=401)
@@ -56,7 +56,10 @@ class WebServer:
     def _setup_routes(self, admin_handlers: AdminHandlers, msg_handlers: MessageHandlers):
         self.app.add_routes([
             web.post('/user/create', admin_handlers.handle_create_user),
+            web.post('/user/delete', admin_handlers.handle_delete_user),
             web.post('/bot/create', admin_handlers.handle_create_bot),
+            web.post('/bot/delete', admin_handlers.handle_delete_bot),
+            web.post('/bot/auth', admin_handlers.handle_update_bot_ws),
             web.post('/msg/send', msg_handlers.handle_send),
             web.get('/msg/receive', msg_handlers.handle_receive),
             web.post('/bot/activate', msg_handlers.handle_activate_bot),
@@ -64,6 +67,7 @@ class WebServer:
             web.post('/bot/status', msg_handlers.handle_bot_status),
             web.post('/webhook/register', msg_handlers.handle_register_webhook),
             web.post('/webhook/unregister', msg_handlers.handle_unregister_webhook),
+
         ])
 
     # Starts the web server and associated background tasks.

@@ -3,16 +3,17 @@ import secrets
 import string
 from aiohttp import web
 from typing import Callable
-from src.config.app_config import add_bot
+from src.config.app_config import add_bot, update_bot_webhook_secret, delete_bot
 from src.matrix.synapse_client import SynapseAdminClient
 
 logger = logging.getLogger(__name__)
 
 # Handles administrative API endpoints.
 class AdminHandlers:
-    def __init__(self, synapse_client: SynapseAdminClient, token_cache_update_callback: Callable):
+    def __init__(self, synapse_client: SynapseAdminClient, token_cache_update_callback: Callable, bots_state: dict = None):
         self.synapse_client = synapse_client
         self.update_token_cache = token_cache_update_callback
+        self.bots_state = bots_state or {'instances': {}, 'tasks': {}}
 
     def _generate_secure_string(self, length=24):
         alphabet = string.ascii_letters + string.digits
@@ -34,6 +35,20 @@ class AdminHandlers:
             logger.error(f"User creation error: {e}", exc_info=True)
             return web.json_response({"error": str(e)}, status=400)
         
+    # Handels deleting a user in Synapse.
+    async def handle_delete_user(self, request: web.Request):
+        try:
+            data = await request.json()
+            username = data.get('username')
+            if not username:
+                return web.json_response({"error": "username is required"}, status=400)
+            
+            await self.synapse_client.delete_user(username)
+            return web.json_response({"status": "success"}, status=200)
+        except Exception as e:
+            logger.error(f"User deletion error: {e}", exc_info=True)
+            return web.json_response({"error": str(e)}, status=400)
+
     # Handles creating a bot user and saving it to the database.
     async def handle_create_bot(self, request: web.Request):
         if not self.synapse_client:
@@ -42,14 +57,14 @@ class AdminHandlers:
         try:
             data = await request.json()
             username = data.get('username')
-            if not username:
-                return web.json_response({"error": "username is required"}, status=400)
+            webhook_secret = data.get('webhook_secret')
+            if not username or not webhook_secret:
+                return web.json_response({"error": "username and webhook_secret are required"}, status=400)
         except Exception:
             return web.json_response({"error": "Invalid JSON payload"}, status=400)
 
         password = self._generate_secure_string(32)
-        webhook_secret = self._generate_secure_string(48)
-        
+
         try:
             user = await self.synapse_client.create_user(username, password, displayname=username)
             user_id = user.get('name')
@@ -67,4 +82,65 @@ class AdminHandlers:
             }, status=201)
         except Exception as e:
             logger.error(f"Bot creation error: {e}", exc_info=True)
+            return web.json_response({"error": f"An unexpected error occurred: {e}"}, status=500)
+    
+    # Handles deleating a bot user and removing it from the database.
+    async def handle_delete_bot(self, request: web.Request):
+        if not self.synapse_client:
+            return web.json_response({"error": "Synapse Admin Client not configured"}, status=501)
+
+        try:
+            data = await request.json()
+            username = data.get('username')
+            if not username:
+                return web.json_response({"error": "username is required"}, status=400)
+        except Exception:
+            return web.json_response({"error": "Invalid JSON payload"}, status=400)
+        
+        # If the bot is active, deactivate it first
+        if username in self.bots_state['instances']:
+            try:
+                task = self.bots_state['tasks'].pop(username, None)
+                if task and not task.done():
+                    task.cancel()
+                del self.bots_state['instances'][username]
+                logger.info(f"Deactivated bot '{username}' before deletion.")
+            except Exception as e:
+                logger.error(f"Failed to deactivate bot '{username}': {e}")
+                return web.json_response({"error": f"Failed to deactivate bot: {e}"}, status=500)
+
+        try:
+            # Remove the bot from synapse
+            await self.synapse_client.delete_user(username)
+            # Remove the bot from the database
+            await delete_bot(username)
+            logger.info(f"Successfully deleted bot '{username}'.")
+            return web.json_response({"status": "success"}, status=200)
+        except Exception as e:
+            logger.error(f"Bot deletion error: {e}", exc_info=True)
+            return web.json_response({"error": f"An unexpected error occurred: {e}"}, status=500)
+        
+    # Handles updating the bot's webhook secret.
+    async def handle_update_bot_ws(self, request: web.Request):
+        try:
+            data = await request.json()
+            username = data.get('username')
+            webhook_secret = data.get('webhook_secret')
+            if not username or not webhook_secret:
+                return web.json_response({"error": "username and webhook_secret are required"}, status=400)
+        except Exception:
+            return web.json_response({"error": "Invalid JSON payload"}, status=400)
+        
+        try:
+            # Update the bot's webhook secret in the database
+            await update_bot_webhook_secret(username, webhook_secret)
+            
+            # Update the auth middleware's token cache
+            self.update_token_cache(webhook_secret, username)
+
+            logger.info(f"Successfully updated webhook secret for bot '{username}'.")
+            return web.json_response({"status": "success", "user_id": username}, status=200)
+        
+        except Exception as e:
+            logger.error(f"Error updating bot webhook secret: {e}", exc_info=True)
             return web.json_response({"error": f"An unexpected error occurred: {e}"}, status=500)
