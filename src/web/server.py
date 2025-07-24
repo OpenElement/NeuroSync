@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class WebServer:
     def __init__(self, config: Config, message_dispatcher: MessageDispatcher, synapse_client: SynapseAdminClient, initial_bot_tokens: dict):
         self.config = config
+        self.synapse_client = synapse_client
         self.bot_tokens = initial_bot_tokens
         self.bots_state = {'instances': {}, 'tasks': {}}
         
@@ -20,15 +21,34 @@ class WebServer:
         self.http_session = None
         
         # Instantiate handlers
-        admin_handlers = AdminHandlers(synapse_client, self.add_bot_token, self.bots_state)
+        self.admin_handlers = AdminHandlers(synapse_client, self.add_bot_token, self.bots_state, self.update_synapse_client)
         self.message_handlers = MessageHandlers(config, message_dispatcher, self.bots_state, None)
         
-        self._setup_routes(admin_handlers, self.message_handlers)
+        self._setup_routes(self.admin_handlers, self.message_handlers)
 
     # Callback to update the in-memory token cache when a bot is created.
     def add_bot_token(self, token: str, user_id: str):
         self.bot_tokens[token] = user_id
         logger.info(f"Updated auth token cache for user {user_id}")
+
+    # Callback to update the Synapse client when the admin token is set.
+    async def update_synapse_client(self, token: str):
+        from src.matrix.synapse_client import SynapseAdminClient
+        
+        # Update the token in config
+        self.config.update_synapse_admin_token(token)
+        
+        # Create new Synapse client
+        new_synapse_client = SynapseAdminClient(
+            self.config.matrix_homeserver,
+            token
+        )
+        
+        # Update references
+        self.synapse_client = new_synapse_client
+        self.admin_handlers.synapse_client = new_synapse_client
+        
+        logger.info("Synapse client updated with new admin token")
 
     # Efficiently authenticates requests using an in-memory token cache.
     @web.middleware
@@ -40,7 +60,7 @@ class WebServer:
         token = auth_header.split(" ")[1]
         
         # Admin endpoints check the global admin token.
-        if request.path in ['/user/create', '/bot/create', '/user/delete', '/bot/auth', '/bot/delete']:
+        if request.path in ['/user/create', '/bot/create', '/user/delete', '/bot/auth', '/bot/delete', '/admin/auth']:
             if self.config.admin_token and token == self.config.admin_token:
                 return await handler(request)
             return web.json_response({"error": "Unauthorized: Invalid admin token"}, status=401)
@@ -60,6 +80,7 @@ class WebServer:
             web.post('/bot/create', admin_handlers.handle_create_bot),
             web.post('/bot/delete', admin_handlers.handle_delete_bot),
             web.post('/bot/auth', admin_handlers.handle_update_bot_ws),
+            web.post('/admin/auth', admin_handlers.handle_set_synapse_admin_token),
             web.post('/msg/send', msg_handlers.handle_send),
             web.get('/msg/receive', msg_handlers.handle_receive),
             web.post('/bot/activate', msg_handlers.handle_activate_bot),

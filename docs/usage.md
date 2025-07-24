@@ -3,6 +3,14 @@
 ## Admin Endpoints
 These require the admin access token.
 
+Add synapse admin token.
+```bash
+curl -X POST https://API_URL/admin/auth \
+    -H "Authorization: Bearer ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"token":"TOKEN_FROM_CLIENT"}'
+```
+
 Create a new user account.
 ```bash
 curl -X POST https://API_URL/user/create \

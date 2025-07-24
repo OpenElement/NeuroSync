@@ -1,6 +1,6 @@
 import os
 import logging
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 from sqlalchemy import Column, String, create_engine, select
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -23,6 +23,11 @@ class Config:
 
         if not self.matrix_homeserver or not self.admin_token:
             raise ConfigError("Missing required env vars: MATRIX_HOMESERVER, NS_ADMIN_TOKEN")
+
+    # Update the synapse admin token both in memory and in the .env file
+    def update_synapse_admin_token(self, token: str):
+        self.synapse_admin_token = token
+        update_synapse_admin_token(token)
 
 
 Base = declarative_base()
@@ -102,3 +107,23 @@ async def update_bot_webhook_secret(user_id: str, new_secret: str):
         except Exception as e:
             logger.error(f"Failed to update webhook secret for bot {user_id}: {e}")
             raise ValueError(f"Failed to update webhook secret for bot {user_id}: {e}")
+
+# Updates the SYNAPSE_ADMIN_TOKEN in the .env file
+def update_synapse_admin_token(token: str):
+    """
+    Updates the SYNAPSE_ADMIN_TOKEN in the .env file.
+    Creates the .env file if it doesn't exist.
+    """
+    env_file_path = ".env"
+    
+    # Create .env file if it doesn't exist
+    if not os.path.exists(env_file_path):
+        with open(env_file_path, 'w') as f:
+            f.write("# NeuroSync Environment Variables\n")
+            f.write("MATRIX_HOMESERVER=\n")
+            f.write("NS_ADMIN_TOKEN=\n")
+            f.write("SYNAPSE_ADMIN_TOKEN=\n")
+    
+    # Update the SYNAPSE_ADMIN_TOKEN value
+    set_key(env_file_path, "SYNAPSE_ADMIN_TOKEN", token)
+    logger.info("Updated SYNAPSE_ADMIN_TOKEN in .env file")

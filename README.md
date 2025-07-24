@@ -33,6 +33,7 @@ NeuroSync is an application that acts as a bridge to a Matrix homeserver, allowi
 
 | Category | Endpoint | Description | Authorization |
 |----------|----------|-------------|---------------|
+| **Admin** | `/admin/auth` | Provide Synapse Admin Token | Admin Token |
 | **Admin** | `/user/create` | Create a new user account | Admin Token |
 | **Admin** | `/bot/create` | Create a new bot account | Admin Token |
 | **Admin** | `/user/delete` | Delete a user account | Admin Token |

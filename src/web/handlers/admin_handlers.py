@@ -3,16 +3,17 @@ import secrets
 import string
 from aiohttp import web
 from typing import Callable
-from src.config.app_config import add_bot, update_bot_webhook_secret, delete_bot
+from src.config.app_config import add_bot, update_bot_webhook_secret, delete_bot, update_synapse_admin_token
 from src.matrix.synapse_client import SynapseAdminClient
 
 logger = logging.getLogger(__name__)
 
 # Handles administrative API endpoints.
 class AdminHandlers:
-    def __init__(self, synapse_client: SynapseAdminClient, token_cache_update_callback: Callable, bots_state: dict = None):
+    def __init__(self, synapse_client: SynapseAdminClient, token_cache_update_callback: Callable, bots_state: dict = None, synapse_client_update_callback: Callable = None):
         self.synapse_client = synapse_client
         self.update_token_cache = token_cache_update_callback
+        self.update_synapse_client = synapse_client_update_callback
         self.bots_state = bots_state or {'instances': {}, 'tasks': {}}
 
     def _generate_secure_string(self, length=24):
@@ -21,6 +22,9 @@ class AdminHandlers:
 
     # Handles creating a new user in Synapse.
     async def handle_create_user(self, request: web.Request):
+        if not self.synapse_client:
+            return web.json_response({"error": "Synapse Admin Client not configured"}, status=501)
+            
         try:
             data = await request.json()
             username, password = data.get('username'), data.get('password')
@@ -37,6 +41,9 @@ class AdminHandlers:
         
     # Handels deleting a user in Synapse.
     async def handle_delete_user(self, request: web.Request):
+        if not self.synapse_client:
+            return web.json_response({"error": "Synapse Admin Client not configured"}, status=501)
+            
         try:
             data = await request.json()
             username = data.get('username')
@@ -143,4 +150,30 @@ class AdminHandlers:
         
         except Exception as e:
             logger.error(f"Error updating bot token: {e}", exc_info=True)
+            return web.json_response({"error": f"An unexpected error occurred: {e}"}, status=500)
+
+    # Handles setting the Synapse admin token
+    async def handle_set_synapse_admin_token(self, request: web.Request):
+        try:
+            data = await request.json()
+            token = data.get('token')
+            if not token:
+                return web.json_response({"error": "token is required"}, status=400)
+        except Exception:
+            return web.json_response({"error": "Invalid JSON payload"}, status=400)
+        
+        try:
+            # Update the token in .env file
+            update_synapse_admin_token(token)
+            
+            # Create new Synapse client
+            if self.update_synapse_client:
+                await self.update_synapse_client(token)
+                logger.info("Successfully updated Synapse admin token")
+                return web.json_response({"status": "success", "message": "Synapse admin token updated"}, status=200)
+            else:
+                return web.json_response({"error": "Synapse client update callback not configured"}, status=500)
+        
+        except Exception as e:
+            logger.error(f"Error setting Synapse admin token: {e}", exc_info=True)
             return web.json_response({"error": f"An unexpected error occurred: {e}"}, status=500)
