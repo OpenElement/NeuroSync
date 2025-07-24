@@ -29,6 +29,9 @@ NeuroSync is an application that acts as a bridge to a Matrix homeserver, allowi
 - **Middleware Architecture**: Centralized authentication and request preprocessing
 - **Graceful Degradation**: Isolated bot failures and optional Synapse admin operations
 
+> For further detail on the codebase see [here.](docs/codebase.md)
+
+
 ## API Endpoints
 
 | Category | Endpoint | Description | Authorization |
@@ -47,9 +50,49 @@ NeuroSync is an application that acts as a bridge to a Matrix homeserver, allowi
 | **Messaging** | `/msg/send` | Send a message to a specific room | Bot Token |
 | **Messaging** | `/msg/receive` | Receive messages from a specific room | Bot Token |
 
-
+> For further detail on usage see [here.](docs/usage.md)
 
 ## Setup Instructions
+
+### NeuroSync + Synapse
+> It's advised you clone the repository in an empty directory (e.g `matrix/`).
+
+1. Clone the repository. 
+```bash
+git clone git@github.com:OpenElement/NeuroSync.git
+cd NeuroSync/
+```
+
+2. Make the setup script executable. 
+```bash
+chmod +x synapse_setup.sh
+```
+
+3. Run the setup script. 
+```bash
+./synapse_setup.sh <SYNAPSE_SERVER_NAME> <ADMIN_PASSWORD> <NS_ADMIN_TOKEN>
+```
+
+4. Get your Synapse Admin Token.
+- Login to an admin account using a matrix client (e.g Element)
+- Navigate to account settings and copy your Access Token (It should begin with `syt_`).
+- Send the Synapse Admin Token to NeuroSync using the following command:
+```bash
+curl -X POST https://API_URL/admin/auth \
+    -H "Authorization: Bearer ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"token":"TOKEN_FROM_CLIENT"}'
+```
+
+5. Create your first bot account:
+```bash
+curl  -X  POST  https://API_URL/bot/create  \
+	-H "Authorization: Bearer KEY" \
+	-H  "Content-Type: application/json"  \
+	-d '{"username":"@BOT:DOMAIN", ""token":"TOKEN"}'
+```
+
+### NeuroSync Only
 1. Clone the repository. 
 ```bash
 git clone git@github.com:OpenElement/NeuroSync.git
@@ -71,8 +114,8 @@ docker compose up --build -d
 
 4. Create your first bot account:
 ```bash
-curl  -X  POST  https://API_URL/create/bot  \
+curl  -X  POST  https://API_URL/bot/create  \
 	-H "Authorization: Bearer KEY" \
 	-H  "Content-Type: application/json"  \
-	-d '{"username":"@BOT:DOMAIN"}'
+	-d '{"username":"@BOT:DOMAIN", ""token":"TOKEN"}'
 ```
