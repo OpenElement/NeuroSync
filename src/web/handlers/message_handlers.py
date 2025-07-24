@@ -20,10 +20,10 @@ class MessageHandlers:
     # Sends a message via a bot.
     async def handle_send(self, request: web.Request):
         data = await request.json()
-        user_id, room_id, message = data.get('user_id'), data.get('room_id'), data.get('message')
+        user_id, room_id, message = data.get('username'), data.get('room_id'), data.get('message')
 
         if not all([user_id, room_id, message]):
-            return web.json_response({"error": "user_id, room_id, and message are required"}, status=400)
+            return web.json_response({"error": "username, room_id, and message are required"}, status=400)
         
         bot = self.bots.get(user_id)
         if not bot:

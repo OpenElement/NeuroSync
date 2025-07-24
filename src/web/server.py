@@ -66,7 +66,7 @@ class WebServer:
             web.post('/bot/deactivate', msg_handlers.handle_deactivate_bot),
             web.post('/bot/status', msg_handlers.handle_bot_status),
             web.post('/webhook/register', msg_handlers.handle_register_webhook),
-            web.post('/webhook/unregister', msg_handlers.handle_unregister_webhook),
+            web.post('/webhook/deregister', msg_handlers.handle_unregister_webhook),
 
         ])
 

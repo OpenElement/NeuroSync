@@ -30,7 +30,7 @@ class AdminHandlers:
             user = await self.synapse_client.create_user(
                 username, password, data.get('display_name'), data.get('recovery_email')
             )
-            return web.json_response({"status": "success", "user_id": user.get('name')}, status=201)
+            return web.json_response({"status": "success", "username": user.get('name')}, status=201)
         except Exception as e:
             logger.error(f"User creation error: {e}", exc_info=True)
             return web.json_response({"error": str(e)}, status=400)
@@ -57,9 +57,9 @@ class AdminHandlers:
         try:
             data = await request.json()
             username = data.get('username')
-            webhook_secret = data.get('webhook_secret')
+            webhook_secret = data.get('token')
             if not username or not webhook_secret:
-                return web.json_response({"error": "username and webhook_secret are required"}, status=400)
+                return web.json_response({"error": "username and token are required"}, status=400)
         except Exception:
             return web.json_response({"error": "Invalid JSON payload"}, status=400)
 
@@ -78,7 +78,7 @@ class AdminHandlers:
 
             logger.info(f"Successfully created bot '{user_id}'.")
             return web.json_response({
-                "status": "success", "user_id": user_id, "webhook_secret": webhook_secret
+                "status": "success", "username": user_id
             }, status=201)
         except Exception as e:
             logger.error(f"Bot creation error: {e}", exc_info=True)
@@ -125,9 +125,9 @@ class AdminHandlers:
         try:
             data = await request.json()
             username = data.get('username')
-            webhook_secret = data.get('webhook_secret')
+            webhook_secret = data.get('token')
             if not username or not webhook_secret:
-                return web.json_response({"error": "username and webhook_secret are required"}, status=400)
+                return web.json_response({"error": "username and token are required"}, status=400)
         except Exception:
             return web.json_response({"error": "Invalid JSON payload"}, status=400)
         
@@ -138,9 +138,9 @@ class AdminHandlers:
             # Update the auth middleware's token cache
             self.update_token_cache(webhook_secret, username)
 
-            logger.info(f"Successfully updated webhook secret for bot '{username}'.")
-            return web.json_response({"status": "success", "user_id": username}, status=200)
+            logger.info(f"Successfully updated token for bot '{username}'.")
+            return web.json_response({"status": "success", "username": username}, status=200)
         
         except Exception as e:
-            logger.error(f"Error updating bot webhook secret: {e}", exc_info=True)
+            logger.error(f"Error updating bot token: {e}", exc_info=True)
             return web.json_response({"error": f"An unexpected error occurred: {e}"}, status=500)
