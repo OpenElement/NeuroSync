@@ -6,10 +6,10 @@ from src.matrix.synapse_client import SynapseAdminClient
 from src.web.server import WebServer
 from src.web.message_dispatcher import MessageDispatcher
 
-# --- Configure Logging ---
+# Logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(levelname)s - %(asctime)s - %(name)s - %(message)s',
+    format='%(levelname)s - %(message)s',
     stream=sys.stdout
 )
 logger = logging.getLogger(__name__)

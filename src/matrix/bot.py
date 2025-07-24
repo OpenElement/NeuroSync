@@ -6,8 +6,8 @@ import simplematrixbotlib as botlib
 
 logger = logging.getLogger(__name__)
 
+# A structured dictionary for messages passed to the queue.
 class MatrixMessage(TypedDict):
-    """A structured dictionary for messages passed to the queue."""
     collector_bot: str
     room_id: str
     sender: str

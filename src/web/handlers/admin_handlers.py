@@ -34,7 +34,7 @@ class AdminHandlers:
             user = await self.synapse_client.create_user(
                 username, password, data.get('display_name'), data.get('recovery_email')
             )
-            return web.json_response({"status": "success", "username": user.get('name')}, status=201)
+            return web.json_response({"status": "success"}, status=201)
         except Exception as e:
             logger.error(f"User creation error: {e}", exc_info=True)
             return web.json_response({"error": str(e)}, status=400)
@@ -84,9 +84,7 @@ class AdminHandlers:
             self.update_token_cache(webhook_secret, user_id)
 
             logger.info(f"Successfully created bot '{user_id}'.")
-            return web.json_response({
-                "status": "success", "username": user_id
-            }, status=201)
+            return web.json_response({"status": "success"}, status=201)
         except Exception as e:
             logger.error(f"Bot creation error: {e}", exc_info=True)
             return web.json_response({"error": f"An unexpected error occurred: {e}"}, status=500)
@@ -129,6 +127,9 @@ class AdminHandlers:
         
     # Handles updating the bot's webhook secret.
     async def handle_update_bot_ws(self, request: web.Request):
+        if not self.synapse_client:
+            return web.json_response({"error": "Synapse Admin Client not configured"}, status=501)
+        
         try:
             data = await request.json()
             username = data.get('username')
@@ -146,14 +147,17 @@ class AdminHandlers:
             self.update_token_cache(webhook_secret, username)
 
             logger.info(f"Successfully updated token for bot '{username}'.")
-            return web.json_response({"status": "success", "username": username}, status=200)
-        
+            return web.json_response({"status": "success"}, status=200)
+
         except Exception as e:
             logger.error(f"Error updating bot token: {e}", exc_info=True)
             return web.json_response({"error": f"An unexpected error occurred: {e}"}, status=500)
 
     # Handles setting the Synapse admin token
     async def handle_set_synapse_admin_token(self, request: web.Request):
+        if not self.synapse_client:
+            return web.json_response({"error": "Synapse Admin Client not configured"}, status=501)
+        
         try:
             data = await request.json()
             token = data.get('token')
@@ -170,7 +174,7 @@ class AdminHandlers:
             if self.update_synapse_client:
                 await self.update_synapse_client(token)
                 logger.info("Successfully updated Synapse admin token")
-                return web.json_response({"status": "success", "message": "Synapse admin token updated"}, status=200)
+                return web.json_response({"status": "success"}, status=200)
             else:
                 return web.json_response({"error": "Synapse client update callback not configured"}, status=500)
         

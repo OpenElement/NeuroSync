@@ -30,7 +30,7 @@ class MessageHandlers:
             return web.json_response({"error": f"Bot '{user_id}' not found or not active."}, status=404)
         
         await bot.send_message(room_id, message)
-        return web.json_response({"status": "success", "sender": user_id})
+        return web.json_response({"status": "success"})
 
     # Receives messages for a room with long-polling.
     async def handle_receive(self, request: web.Request):
@@ -76,8 +76,9 @@ class MessageHandlers:
         self.bot_tasks[user_id] = task
         
         logger.info(f"Successfully activated bot {user_id}")
-        return web.json_response({"status": "success", "user_id": user_id}, status=200)
+        return web.json_response({"status": "success"}, status=200)
 
+    # Deactivates a bot.
     async def handle_deactivate_bot(self, request: web.Request):
         user_id = request.get('authenticated_user_id')
         if user_id not in self.bots:
@@ -89,7 +90,7 @@ class MessageHandlers:
         del self.bots[user_id]
         
         logger.info(f"Successfully deactivated bot {user_id}")
-        return web.json_response({"status": "success", "user_id": user_id}, status=200)
+        return web.json_response({"status": "success"}, status=200)
 
     # Webhook Endpoints
     async def handle_register_webhook(self, request: web.Request):

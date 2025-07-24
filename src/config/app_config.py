@@ -110,10 +110,7 @@ async def update_bot_webhook_secret(user_id: str, new_secret: str):
 
 # Updates the SYNAPSE_ADMIN_TOKEN in the .env file
 def update_synapse_admin_token(token: str):
-    """
-    Updates the SYNAPSE_ADMIN_TOKEN in the .env file.
-    Creates the .env file if it doesn't exist.
-    """
+
     env_file_path = ".env"
     
     # Create .env file if it doesn't exist
