@@ -79,17 +79,17 @@ chmod +x synapse_setup.sh
 - Send the Synapse Admin Token to NeuroSync using the following command:
 ```bash
 curl -X POST https://API_URL/admin/auth \
-    -H "Authorization: Bearer ADMIN_TOKEN" \
+    -H "Authorization: Bearer NS_ADMIN_TOKEN" \
     -H "Content-Type: application/json" \
-    -d '{"token":"TOKEN_FROM_CLIENT"}'
+    -d '{"token":"SYNAPSE_ADMIN_TOKEN"}'
 ```
 
 5. Create your first bot account:
 ```bash
 curl  -X  POST  https://API_URL/bot/create  \
-	-H "Authorization: Bearer KEY" \
+	-H "Authorization: Bearer NS_ADMIN_TOKEN" \
 	-H  "Content-Type: application/json"  \
-	-d '{"username":"@BOT:DOMAIN", ""token":"TOKEN"}'
+	-d '{"username":"@USERNAME:HOMESERVER", "token":"NS_BOT_TOKEN"}'
 ```
 
 ### NeuroSync Only
@@ -115,7 +115,7 @@ docker compose up --build -d
 4. Create your first bot account:
 ```bash
 curl  -X  POST  https://API_URL/bot/create  \
-	-H "Authorization: Bearer KEY" \
+	-H "Authorization: Bearer NS_ADMIN_TOKEN" \
 	-H  "Content-Type: application/json"  \
-	-d '{"username":"@BOT:DOMAIN", ""token":"TOKEN"}'
+	-d '{"username":"@USERNAME:HOMESERVER", "token":"NS_BOT_TOKEN"}'
 ```

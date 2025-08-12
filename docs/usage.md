@@ -6,49 +6,49 @@ These require the admin access token.
 Add synapse admin token.
 ```bash
 curl -X POST https://API_URL/admin/auth \
-    -H "Authorization: Bearer ADMIN_TOKEN" \
+    -H "Authorization: Bearer NS_ADMIN_TOKEN" \
     -H "Content-Type: application/json" \
-    -d '{"token":"TOKEN_FROM_CLIENT"}'
+    -d '{"token":"SYNAPSE_ADMIN_TOKEN"}'
 ```
 
 Create a new user account.
 ```bash
-curl -X POST https://API_URL/user/create \
-    -H "Authorization: Bearer ADMIN_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{"username":"@USERNAME:HOMESERVER", "password":"PASSWORD"}'
+curl  -X  POST  https://API_URL/user/create  \
+	-H "Authorization: Bearer NS_ADMIN_TOKEN" \
+	-H  "Content-Type: application/json"  \
+	-d '{"username":"@USERNAME:HOMESERVER", "password":"PASSWORD"}'
 ```
 
 Create a new bot account.
 ```bash
-curl -X POST https://API_URL/bot/create \
-    -H "Authorization: Bearer ADMIN_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{"username":"@USERNAME:HOMESERVER", "token":"BOT_TOKEN"}'
+curl  -X  POST  https://API_URL/bot/create  \
+	-H "Authorization: Bearer NS_ADMIN_TOKEN" \
+	-H  "Content-Type: application/json"  \
+	-d '{"username":"@USERNAME:HOMESERVER", "token":"NS_BOT_TOKEN"}'
 ```
 
 Delete a user account.
 ```bash
-curl -X POST https://API_URL/user/delete \    
-    -H "Authorization: Bearer ADMIN_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{"username":"@USERNAME:HOMESERVER"}'
+curl  -X  POST  https://API_URL/user/delete  \
+	-H "Authorization: Bearer NS_ADMIN_TOKEN" \
+	-H  "Content-Type: application/json"  \
+	-d '{"username":"@USERNAME:HOMESERVER"}'
 ```
 
 Delete a bot account.
 ```bash
 curl -X POST https://API_URL/bot/delete \
-    -H "Authorization: Bearer ADMIN_TOKEN" \
+    -H "Authorization: Bearer NS_ADMIN_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"username":"@USERNAME:HOMESERVER"}'
 ```
 
 Update a bots token.
 ```bash
-curl -X  POST  https://ns.danoneill.uk/bot/auth  \
-    -H "Authorization: Bearer ADMIN_TOKEN" \
-    -H  "Content-Type: application/json"  \
-    -d '{"username":"@USERNAME:HOMESERVER", "token":"BOT_TOKEN"}'
+curl  -X  POST  https://API_URL/bot/auth  \
+	-H "Authorization: Bearer NS_ADMIN_TOKEN" \
+	-H  "Content-Type: application/json"  \
+	-d '{"username":"@USERNAME:HOMESERVER", "token":"NS_BOT_TOKEN"}'
 ```
 
 ## Bot Endpoints
@@ -57,7 +57,7 @@ These require the bot access token.
 Activate a bot account.
 ```bash
 curl -X POST https://API_URL/bot/activate \
-    -H "Authorization: Bearer BOT_TOKEN" \
+    -H "Authorization: Bearer NS_BOT_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"username":"@USERNAME:HOMESERVER"}'
 ```
@@ -65,15 +65,15 @@ curl -X POST https://API_URL/bot/activate \
 Deactivate a bot account.
 ```bash
 curl -X POST https://API_URL/bot/deactivate \
-    -H "Authorization: Bearer BOT_TOKEN" \
+    -H "Authorization: Bearer NS_BOT_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"username":"@USERNAME:HOMESERVER"}'
 ```
 
 Get a bots status.
 ```bash
-curl -X POST https://API_URL/bot/status \    
-    -H "Authorization: Bearer BOT_TOKEN" \
+curl -X POST https://API_URL/bot/status \
+    -H "Authorization: Bearer NS_BOT_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"username":"@USERNAME:HOMESERVER"}'
 ```
@@ -83,32 +83,32 @@ These require the bot access token.
 
 Register a webhook.
 ```bash
-curl -X POST https://API_URL/msg/register \
-    -H "Authorization: Bearer BOT_TOKEN" \
+curl -X POST https://API_URL/webhook/register \
+    -H "Authorization: Bearer NS_BOT_TOKEN" \
     -H "Content-Type: application/json" \
-    -d '{"username":"@USERNAME:HOMESERVER", "webhook_url": "URL"}'
+    -d '{"username":"@USERNAME:HOMESERVER", "webhook_url": "WEBHOOK_URL"}' 
 ```
 
 Deregister a webhook.
 ```bash
-curl -X POST https://API_URL/msg/deregister \
-    -H "Authorization: Bearer BOT_TOKEN" \
+curl -X POST https://API_URL/webhook/deregister \
+    -H "Authorization: Bearer NS_BOT_TOKEN" \
     -H "Content-Type: application/json" \
-    -d '{"username":"@USERNAME:HOMESERVER"}'
+    -d '{"username":"@USERNAME:HOMESERVER", "webhook_url": "WEBHOOK_URL"}'
 ```
 
 Send a message to a specific room.
 ```bash
 curl  -X  POST  https://API_URL/msg/send  \
-    -H "Authorization: Bearer BOT_TOKEN" \
+    -H "Authorization: Bearer NS_BOT_TOKEN" \
     -H  "Content-Type: application/json"  \
-    -d '{"message":"MESSAGE", "username":"@USERNAME:HOMESERVER", "room_id": "!ROOM:HOMESERVER"}'
+    -d '{"message":"MSG", "username":"@USERNAME:HOMESERVER", "room_id": "!ROOM:HOMESERVER"}'
 ```
 
 Receive messages from a specific room.
 ```bash
 curl  -X  POST  https://API_URL/msg/receive  \
-    -H "Authorization: Bearer BOT_TOKEN" \
+    -H "Authorization: Bearer NS_BOT_TOKEN" \
     -H  "Content-Type: application/json"  \
     -d '{"room_id": "!ROOM:HOMESERVER"}'
 ```
